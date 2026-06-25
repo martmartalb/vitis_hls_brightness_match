@@ -55,7 +55,7 @@ def parse_cfg_file(cfg_file):
     return entries
 
 
-def apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file):
+def apply_cfg_file(client, workspace, name, cfg_file):
     cwd = os.getcwd() + '/'
     entries = parse_cfg_file(cfg_file)
 
@@ -64,10 +64,8 @@ def apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file):
     )
 
     for section, key, value in entries:
-        if key == 'syn.file':
-            value = cwd + syn_file
-        elif key == 'tb.file':
-            value = cwd + tb_file
+        if key in ('syn.file', 'tb.file'):
+            value = cwd + value
 
         if section is None:
             ws_cfg.set_value(key=key, value=value)
@@ -80,7 +78,7 @@ def apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file):
 # =========================================================
 
 @build_command
-def create_hls_component_project(workspace: str, name: str, cfg_file: str, syn_file: str, tb_file: str):
+def create_hls_component_project(workspace: str, name: str, cfg_file: str):
     client = vitis.create_client()
     client.set_workspace(path=workspace)
 
@@ -93,7 +91,7 @@ def create_hls_component_project(workspace: str, name: str, cfg_file: str, syn_f
         template='empty_hls_component'
     )
 
-    apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file)
+    apply_cfg_file(client, workspace, name, cfg_file)
 
     return comp
 

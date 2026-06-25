@@ -3,9 +3,7 @@ VITIS = $(XILINX_VITIS)/bin/vitis
 
 # Project config
 HLS_COMPONENT_NAME = brightness_match
-HLS_CFG_FILE       = src/hls_config.cfg
-HLS_SYN_FILE       = src/ip/brightness_match.cpp
-HLS_TB_FILE        = src/tb/brightness_match_tb.cpp
+HLS_CFG_FILE       = config/hls_config.cfg
 VITIS_WS           = vitis_workspace
 
 # Scripts
@@ -19,14 +17,12 @@ all: synth
 .PHONY: create_project
 create_project: $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg
 
-$(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg: $(HLS_CFG_FILE) $(HLS_SYN_FILE) $(HLS_TB_FILE) $(BUILD_SCRIPT)
+$(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg: $(HLS_CFG_FILE) $(BUILD_SCRIPT)
 	@echo "==> Creating HLS component project..."
 	$(VITIS) -s $(BUILD_SCRIPT) create_hls_component_project \
 		--workspace $(VITIS_WS) \
 		--name $(HLS_COMPONENT_NAME) \
-		--cfg_file $(HLS_CFG_FILE) \
-		--syn_file $(HLS_SYN_FILE) \
-		--tb_file $(HLS_TB_FILE)
+		--cfg_file $(HLS_CFG_FILE)
 
 # C Simulation
 .PHONY: csim
