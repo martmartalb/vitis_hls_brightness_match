@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstdint>
+#include <filesystem>
 #include <opencv2/imgcodecs.hpp>
 #include "ap_int.h"
 #include "hls_stream.h"
@@ -21,10 +22,22 @@ typedef hls::stream<axi_pixel_t>    axi_stream_t;
 void brightness_match(axi_stream_t &in_stream, axi_stream_t &out_stream,
                       ap_uint<32> k_mean);
 
-// Derive the data/ directory path relative to this source file at compile time.
+// Derive directory paths from this source file's location at compile time.
+// __FILE__ resolves to .../src/tb/brightness_match_img_tb.cpp
 static std::string tb_data_dir() {
     std::string path = __FILE__;
     return path.substr(0, path.find_last_of("/\\") + 1) + "data/";
+}
+
+static std::string artifacts_dir() {
+    std::string path = __FILE__;
+    for (int i = 0; i < 3; i++) {        // strip filename, tb/, src/
+        size_t pos = path.find_last_of("/\\");
+        if (pos != std::string::npos) path = path.substr(0, pos);
+    }
+    std::string dir = path + "/artifacts/";
+    std::filesystem::create_directories(dir);
+    return dir;
 }
 
 // Pack two RGB pixels into one AXI word.
@@ -167,6 +180,7 @@ int main() {
     }
 
     // Frame 1: offset computed from frame 0's per-channel mean
+    cv::Mat out_img(img.rows, img.cols, CV_8UC3);
     {
         int local_errors = 0;
         for (int word_idx = 0; word_idx < total_words; word_idx++) {
@@ -179,6 +193,9 @@ int main() {
                 uint8_t out_r = (uint8_t)w.data(base + 23, base + 16).to_uint();
                 uint8_t out_g = (uint8_t)w.data(base + 15, base +  8).to_uint();
                 uint8_t out_b = (uint8_t)w.data(base +  7, base +  0).to_uint();
+
+                // Store output pixel in BGR order for OpenCV
+                out_img.at<cv::Vec3b>(y, x) = cv::Vec3b(out_b, out_g, out_r);
 
                 cv::Vec3b px = img.at<cv::Vec3b>(y, x);
                 uint8_t exp_r = ref_clamp((int)px[2] + ref_off_r);
@@ -200,6 +217,10 @@ int main() {
         std::cout << "  frame 1 (corrected):    "
                   << (local_errors == 0 ? "PASS" : "FAIL") << "\n";
     }
+
+    std::string out_path = artifacts_dir() + "output_img.png";
+    cv::imwrite(out_path, out_img);
+    std::cout << " output : " << out_path << "\n";
 
     std::cout << "\n============================================================\n";
     std::cout << (errors == 0 ? " RESULT: PASS\n" : " RESULT: FAIL\n");
