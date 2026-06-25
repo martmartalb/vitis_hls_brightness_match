@@ -1,76 +1,54 @@
 RM = rm -rf
-VIVADO = $(XILINX_VIVADO)/bin/vivado
 VITIS = $(XILINX_VITIS)/bin/vitis
 
 # Project config
-VIVADO_PROJECT_NAME = vivado_project
-VIVADO_PROJECT_DIR  = $(VIVADO_PROJECT_NAME)
-PLATFORM_NAME = platform
-
-VITIS_APP_NAME = hdmi_demo_app
-VITIS_WS = vitis_workspace
+HLS_COMPONENT_NAME = brightness_match
+HLS_CFG_FILE       = src/hls_config.cfg
+VITIS_WS           = vitis_workspace
 
 # Scripts
-CREATE_PROJECT_SCRIPT   = scripts/create_project.tcl
-GEN_HW_PLATFORM_SCRIPT   = scripts/gen_hw_platform.tcl
-GEN_VITIS_PLATFORM_SCRIPT = scripts/create_vitis_project.py
-
-# Default: no trace
-TRACE_FLAG = -notrace
-
-# If "trace" is passed as a target → remove -notrace
-ifeq ($(filter trace,$(MAKECMDGOALS)),trace)
-TRACE_FLAG =
-endif
+BUILD_SCRIPT = scripts/vitis_build_comands.py
 
 # Default target
 .PHONY: all
-all: vitis_app
+all: synth
 
-# Create Vivado project
-.PHONY: vivado_project
-vivado_project: $(VIVADO_PROJECT_DIR)/$(VIVADO_PROJECT_NAME).xpr
+# Create HLS component project
+.PHONY: create_project
+create_project: $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg
 
-
-$(VIVADO_PROJECT_DIR)/$(VIVADO_PROJECT_NAME).xpr: $(CREATE_PROJECT_SCRIPT)
-	@echo "==> Creating Vivado project..."
-	$(VIVADO) -mode batch $(TRACE_FLAG) -source $(CREATE_PROJECT_SCRIPT) \
-		-tclargs --origin_dir $(shell pwd)
-
-# Create HW Platform
-.PHONY: hw_platform
-hw_platform: $(VIVADO_PROJECT_DIR)/$(PLATFORM_NAME).xsa
-
-$(VIVADO_PROJECT_DIR)/$(PLATFORM_NAME).xsa: $(VIVADO_PROJECT_DIR)/$(VIVADO_PROJECT_NAME).xpr $(GEN_HW_PLATFORM_SCRIPT)
-	@echo "==> Generating HW Platform..."
-	$(VIVADO) -mode batch $(TRACE_FLAG) -source $(GEN_HW_PLATFORM_SCRIPT) \
-		-tclargs --origin_dir $(shell pwd) --project_name $(VIVADO_PROJECT_DIR) \
-		--platform_name $(PLATFORM_NAME)
-
-# Create Vitis platform
-.PHONY: vitis_platform
-vitis_platform: $(VITIS_WS)/$(PLATFORM_NAME)/export/$(PLATFORM_NAME)/$(PLATFORM_NAME).xpfm
-
-$(VITIS_WS)/$(PLATFORM_NAME)/export/$(PLATFORM_NAME)/$(PLATFORM_NAME).xpfm: $(VIVADO_PROJECT_DIR)/$(PLATFORM_NAME).xsa $(GEN_VITIS_PLATFORM_SCRIPT)
-	@echo "==> Creating Vitis platform..."
-	$(VITIS) -s $(GEN_VITIS_PLATFORM_SCRIPT) platform \
-		--xsa $(VIVADO_PROJECT_DIR)/$(PLATFORM_NAME).xsa \
+$(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg: $(HLS_CFG_FILE) $(BUILD_SCRIPT)
+	@echo "==> Creating HLS component project..."
+	$(VITIS) -s $(BUILD_SCRIPT) create_hls_component_project \
 		--workspace $(VITIS_WS) \
-		--name $(PLATFORM_NAME)
+		--name $(HLS_COMPONENT_NAME) \
+		--cfg_file $(HLS_CFG_FILE)
 
-# Create Vitis app
-.PHONY: vitis_app
-vitis_app: $(VITIS_WS)/$(VITIS_APP_NAME)/.created
-
-$(VITIS_WS)/$(VITIS_APP_NAME)/.created: $(VITIS_WS)/$(PLATFORM_NAME)/export/$(PLATFORM_NAME)/$(PLATFORM_NAME).xpfm $(GEN_VITIS_PLATFORM_SCRIPT)
-	@echo "==> Creating Vitis app..."
-	$(VITIS) -s $(GEN_VITIS_PLATFORM_SCRIPT) vitis_app \
+# C Simulation
+.PHONY: csim
+csim: create_project
+	@echo "==> Running C Simulation..."
+	$(VITIS) -s $(BUILD_SCRIPT) run_csim \
 		--workspace $(VITIS_WS) \
-		--xpfm $(VITIS_WS)/$(PLATFORM_NAME)/export/$(PLATFORM_NAME)/$(PLATFORM_NAME).xpfm \
-		--name $(VITIS_APP_NAME) \
-		--src_dir src/$(VITIS_APP_NAME)/src
+		--name $(HLS_COMPONENT_NAME)
+
+# Synthesis
+.PHONY: synth
+synth: create_project
+	@echo "==> Running Synthesis..."
+	$(VITIS) -s $(BUILD_SCRIPT) run_synth \
+		--workspace $(VITIS_WS) \
+		--name $(HLS_COMPONENT_NAME)
+
+# Co-Simulation
+.PHONY: cosim
+cosim: create_project
+	@echo "==> Running Co-Simulation..."
+	$(VITIS) -s $(BUILD_SCRIPT) run_cosim \
+		--workspace $(VITIS_WS) \
+		--name $(HLS_COMPONENT_NAME)
 
 # Clean everything
 .PHONY: clean
 clean:
-	$(RM) $(VIVADO_PROJECT_DIR) $(VITIS_WS) vivado* .Xil *.log *.jou
+	$(RM) $(VITIS_WS) vivado* .Xil *.log *.jou
