@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import configparser
 import os
 import shutil
 import inspect
@@ -38,13 +39,35 @@ def get_component(workspace: str, name: str):
     return comp
 
 
+def apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file):
+    cwd = os.getcwd() + '/'
+    config = configparser.ConfigParser()
+    config.read(cfg_file)
+
+    ws_cfg = client.get_config_file(
+        path=os.path.join(workspace, name, 'hls_config.cfg')
+    )
+
+    for key, value in config.defaults().items():
+        ws_cfg.set_value(key=key, value=value)
+
+    for section in config.sections():
+        for key, value in config.items(section):
+            if key in config.defaults():
+                continue
+            if key == 'syn.file':
+                value = cwd + syn_file
+            elif key == 'tb.file':
+                value = cwd + tb_file
+            ws_cfg.set_value(section=section, key=key, value=value)
+
+
 # =========================================================
 # Commands
 # =========================================================
 
 @build_command
 def create_hls_component_project(workspace: str, name: str, cfg_file: str, syn_file: str, tb_file: str):
-    cwd = os.getcwd() + '/'
     client = vitis.create_client()
     client.set_workspace(path=workspace)
 
@@ -54,15 +77,10 @@ def create_hls_component_project(workspace: str, name: str, cfg_file: str, syn_f
 
     comp = client.create_hls_component(
         name=name,
-        cfg_file=[cfg_file],
         template='empty_hls_component'
     )
 
-    ws_cfg = client.get_config_file(
-        path=os.path.join(workspace, name, 'hls_config.cfg')
-    )
-    ws_cfg.set_value(section='hls', key='syn.file', value=cwd + syn_file)
-    ws_cfg.set_value(section='hls', key='tb.file', value=cwd + tb_file)
+    apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file)
 
     return comp
 
