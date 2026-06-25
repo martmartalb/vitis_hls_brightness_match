@@ -59,4 +59,4 @@ package: synth
 # Clean everything
 .PHONY: clean
 clean:
-	$(RM) $(VITIS_WS) vivado* .Xil *.log *.jou
+	$(RM) $(VITIS_WS) vivado* .Xil *.log *.jou artifacts

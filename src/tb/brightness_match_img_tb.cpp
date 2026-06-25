@@ -29,6 +29,7 @@ static std::string tb_data_dir() {
     return path.substr(0, path.find_last_of("/\\") + 1) + "data/";
 }
 
+#ifdef __HLS_CSIM__
 static std::string artifacts_dir() {
     std::string path = __FILE__;
     for (int i = 0; i < 3; i++) {        // strip filename, tb/, src/
@@ -39,6 +40,7 @@ static std::string artifacts_dir() {
     std::filesystem::create_directories(dir);
     return dir;
 }
+#endif
 
 // Pack two RGB pixels into one AXI word.
 // Byte order per pixel in the stream: B[7:0], G[15:8], R[23:16].
@@ -85,7 +87,7 @@ static uint8_t ref_clamp(int v) {
 }
 
 int main() {
-    std::string img_path = tb_data_dir() + "color_pattern.png";
+    std::string img_path = tb_data_dir() + "brightened.png";
 
     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
     if (img.empty()) {
@@ -180,7 +182,9 @@ int main() {
     }
 
     // Frame 1: offset computed from frame 0's per-channel mean
+#ifdef __HLS_CSIM__
     cv::Mat out_img(img.rows, img.cols, CV_8UC3);
+#endif
     {
         int local_errors = 0;
         for (int word_idx = 0; word_idx < total_words; word_idx++) {
@@ -194,9 +198,9 @@ int main() {
                 uint8_t out_g = (uint8_t)w.data(base + 15, base +  8).to_uint();
                 uint8_t out_b = (uint8_t)w.data(base +  7, base +  0).to_uint();
 
-                // Store output pixel in BGR order for OpenCV
+#ifdef __HLS_CSIM__
                 out_img.at<cv::Vec3b>(y, x) = cv::Vec3b(out_b, out_g, out_r);
-
+#endif
                 cv::Vec3b px = img.at<cv::Vec3b>(y, x);
                 uint8_t exp_r = ref_clamp((int)px[2] + ref_off_r);
                 uint8_t exp_g = ref_clamp((int)px[1] + ref_off_g);
@@ -218,9 +222,11 @@ int main() {
                   << (local_errors == 0 ? "PASS" : "FAIL") << "\n";
     }
 
+#ifdef __HLS_CSIM__
     std::string out_path = artifacts_dir() + "output_img.png";
     cv::imwrite(out_path, out_img);
     std::cout << " output : " << out_path << "\n";
+#endif
 
     std::cout << "\n============================================================\n";
     std::cout << (errors == 0 ? " RESULT: PASS\n" : " RESULT: FAIL\n");
