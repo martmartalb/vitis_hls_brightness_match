@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import configparser
 import os
 import shutil
 import inspect
@@ -39,26 +38,40 @@ def get_component(workspace: str, name: str):
     return comp
 
 
+def parse_cfg_file(cfg_file):
+    entries = []
+    current_section = None
+    with open(cfg_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith('[') and line.endswith(']'):
+                current_section = line[1:-1]
+                continue
+            if '=' in line:
+                key, value = line.split('=', 1)
+                entries.append((current_section, key.strip(), value.strip()))
+    return entries
+
+
 def apply_cfg_file(client, workspace, name, cfg_file, syn_file, tb_file):
     cwd = os.getcwd() + '/'
-    config = configparser.ConfigParser()
-    config.read(cfg_file)
+    entries = parse_cfg_file(cfg_file)
 
     ws_cfg = client.get_config_file(
         path=os.path.join(workspace, name, 'hls_config.cfg')
     )
 
-    for key, value in config.defaults().items():
-        ws_cfg.set_value(key=key, value=value)
+    for section, key, value in entries:
+        if key == 'syn.file':
+            value = cwd + syn_file
+        elif key == 'tb.file':
+            value = cwd + tb_file
 
-    for section in config.sections():
-        for key, value in config.items(section):
-            if key in config.defaults():
-                continue
-            if key == 'syn.file':
-                value = cwd + syn_file
-            elif key == 'tb.file':
-                value = cwd + tb_file
+        if section is None:
+            ws_cfg.set_value(key=key, value=value)
+        else:
             ws_cfg.set_value(section=section, key=key, value=value)
 
 
