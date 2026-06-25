@@ -14,8 +14,8 @@ BUILD_SCRIPT = scripts/vitis_build_comands.py
 all: synth
 
 # Create HLS component project
-.PHONY: create_project
-create_project: $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg
+.PHONY: hls_component
+hls_component: $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg
 
 $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg: $(HLS_CFG_FILE) $(BUILD_SCRIPT)
 	@echo "==> Creating HLS component project..."
@@ -26,7 +26,7 @@ $(VITIS_WS)/$(HLS_COMPONENT_NAME)/hls_config.cfg: $(HLS_CFG_FILE) $(BUILD_SCRIPT
 
 # C Simulation
 .PHONY: csim
-csim: create_project
+csim: hls_component
 	@echo "==> Running C Simulation..."
 	$(VITIS) -s $(BUILD_SCRIPT) run_csim \
 		--workspace $(VITIS_WS) \
@@ -34,7 +34,7 @@ csim: create_project
 
 # Synthesis
 .PHONY: synth
-synth: create_project
+synth: hls_component
 	@echo "==> Running Synthesis..."
 	$(VITIS) -s $(BUILD_SCRIPT) run_synth \
 		--workspace $(VITIS_WS) \
@@ -42,7 +42,7 @@ synth: create_project
 
 # Co-Simulation
 .PHONY: cosim
-cosim: create_project
+cosim: hls_component
 	@echo "==> Running Co-Simulation..."
 	$(VITIS) -s $(BUILD_SCRIPT) run_cosim \
 		--workspace $(VITIS_WS) \
