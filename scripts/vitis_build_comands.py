@@ -43,7 +43,8 @@ def get_component(workspace: str, name: str):
 # =========================================================
 
 @build_command
-def create_hls_component_project(workspace: str, name: str, cfg_file: str):
+def create_hls_component_project(workspace: str, name: str, cfg_file: str, syn_file: str, tb_file: str):
+    cwd = os.getcwd() + '/'
     client = vitis.create_client()
     client.set_workspace(path=workspace)
 
@@ -56,6 +57,13 @@ def create_hls_component_project(workspace: str, name: str, cfg_file: str):
         cfg_file=[cfg_file],
         template='empty_hls_component'
     )
+
+    ws_cfg = client.get_config_file(
+        path=os.path.join(workspace, name, 'hls_config.cfg')
+    )
+    ws_cfg.set_value(section='hls', key='syn.file', value=cwd + syn_file)
+    ws_cfg.set_value(section='hls', key='tb.file', value=cwd + tb_file)
+
     return comp
 
 
