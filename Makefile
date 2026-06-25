@@ -48,6 +48,14 @@ cosim: hls_component
 		--workspace $(VITIS_WS) \
 		--name $(HLS_COMPONENT_NAME)
 
+# Package IP
+.PHONY: package
+package: synth
+	@echo "==> Packaging HLS IP..."
+	$(VITIS) -s $(BUILD_SCRIPT) run_package \
+		--workspace $(VITIS_WS) \
+		--name $(HLS_COMPONENT_NAME)
+
 # Clean everything
 .PHONY: clean
 clean:

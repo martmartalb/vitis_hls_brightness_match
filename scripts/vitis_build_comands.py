@@ -114,6 +114,12 @@ def run_cosim(workspace: str, name: str):
     comp.run(operation='CO_SIMULATION')
 
 
+@build_command
+def run_package(workspace: str, name: str):
+    comp = get_component(workspace, name)
+    comp.run(operation='PACKAGE')
+
+
 # =========================================================
 # CLI builder (auto from signature)
 # =========================================================
